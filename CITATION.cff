@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+title: ASAP: A Dynamic & Proactive Approach for Android Security Analysis and Privacy
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Catarina
+    family-names: Silva
+    email: c.alexandracorreia@ua.pt
+    affiliation: Universidade de Aveiro
+    orcid: 'https://orcid.org/0000-0002-7969-8813'
+  - given-names: João
+    family-names: Felizberto
+    email: joaofelisberto@ua.pt
+    affiliation: Universidade de Aveiro
+  - given-names: João Paulo
+  	family-names: Barraca
+    email: jpbarraca@ua.pt
+    affiliation: Universidade de Aveiro
+    orcid: 'https://orcid.org/0000-0002-5029-6191'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.10341887
+repository-code: 'https://github.com/catarinaacsilva/ASAP'
+url: 'https://github.com/catarinaacsilva/ASAP'
+license: MIT
+version: 0.1
+date-released: '2024-04-10'
