@@ -21,7 +21,7 @@ authors:
     orcid: 'https://orcid.org/0000-0002-5029-6191'
 identifiers:
   - type: doi
-    value: 10.5281/zenodo.10341887
+    value: 10.5281/zenodo.10951599
 repository-code: 'https://github.com/catarinaacsilva/ASAP'
 url: 'https://github.com/catarinaacsilva/ASAP'
 license: MIT
