@@ -15,7 +15,7 @@ To establish a dynamic threshold level, we employ a variant of the ISODATA thres
 
 * [**Catarina Silva**](mailto:c.alexandracorreia@ua.pt)
 
-* [**João Felizberto**](mailto:joaofelisberto@ua.pt)
+* [**João Felisberto**](mailto:joaofelisberto@ua.pt)
 
 ## License
 
