@@ -8,3 +8,5 @@ tensorflow-cpu>=2.16.1
 tqdm>=4.66.2
 ipywidgets>=8.1.2
 imbalanced-learn>=0.12.2  
+beautifulsoup4>=4.12.3
+requests>=2.32.3
