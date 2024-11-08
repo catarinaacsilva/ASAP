@@ -24,6 +24,7 @@ cats = {
 }
 
 learning = {
+    "guitar",
     "coaching",
     "language",
     "learning disability",
@@ -34,6 +35,7 @@ learning = {
 }
 
 social_media = {
+    "social media"
     "calling",
     "chat",
     "communication",
@@ -56,11 +58,22 @@ sports = {
     "motor assistance",
     "sports",
     "wwe",
+    "wrestling",
 }
 
 multimedia = {
+    "multimedia"
+    "player",
+    "design",
+    "translation",
+    "asmr",
+    "tv shows",
+    "free movie",
+    "idol",
+    "k-pop",
     "anime player",
     "anime",
+    "anime-adapted",
     "art & design",
     "audio",
     "books & reference",
@@ -102,11 +115,17 @@ multimedia = {
 }
 
 health = {
+    "hearing assistance"
+    "lifestyle",
+    "visual assistance",
     "doctor",
     "health & fitness",
 }
 
 office = {
+    "collaboration",
+    "ai",
+    "office",
     "app2sd",
     "browser",
     "business",
@@ -139,6 +158,7 @@ office = {
 }
 
 customization = {
+    "libraries & demo",
     "customization",
     "download tool",
     "file managers",
@@ -153,6 +173,9 @@ customization = {
 }
 
 shopping = {
+    "casino-adventure",
+    "e commerce",
+    "shopping",
     "android market",
     "app store",
     "e-commerce",
@@ -167,6 +190,98 @@ shopping = {
 }
 
 games = {
+    "stunning skill",
+    "wuxia novel",
+    "cross-platform",
+    "обучение реагировани",
+    "healing",
+    "ball",
+    "stunning graphic",
+    "gun",
+    "5v5",
+    "finger speed",
+    "auto chess",
+    "kids",
+    "otome",
+    "arena",
+    "tower defence",
+    "monster",
+    "pool",
+    "clicker/idle",
+    "tennis",
+    "games",
+    "weather",
+    "horrible",
+    "dinosaur",
+    "football",
+    "avatar",
+    "fairy tale",
+    "bus",
+    "virtual pet",
+    "boxing",
+    "rummy",
+    "fighter",
+    "mario",
+    "shoot",
+    "decent graphic",
+    "vehicles",
+    "open-world",
+    "1v1 race",
+    "lucky patcher",
+    "grandchase",
+    "mining",
+    "shooter game",
+    "parenting",
+    "5 v 5",
+    "destory everything",
+    "dice",
+    "kwaii",
+    "plot",
+    "explore",
+    "raise dragon",
+    "train",
+    "beat",
+    "fifa",
+    "mini-games",
+    "geomancy",
+    "metaverse",
+    "novel",
+    "life",
+    "line",
+    "onmyoji arena",
+    "side-scroller",
+    "mega",
+    "survive",
+    "pixellated",
+    "strategy rpg",
+    "bullet time",
+    "advanture",
+    "winter",
+    "fight",
+    "talking tom",
+    "text-based",
+    "multiple characters"
+    "detective",
+    "online racing",
+    "super-intense",
+    "console",
+    "combos",
+    "supercar",
+    "kart",
+    "baby",
+    "garena",
+    "angels of death",
+    "tamer",
+    "mahjong",
+    "bowling",
+    "norse mythology"
+    "nail salon",
+    "drifting",
+    "beauty",
+    "artillery shooter",
+    "free novel reader",
+    "sniper",
+    "ninja",
     "1 on 1",
     "2048",
     "2d",
@@ -401,6 +516,17 @@ games = {
 
 app_cats = {}
 
+def simplify_category(cat: str) -> str:
+    return  "games" if cat in games else \
+            "learning" if cat in learning else \
+            "social media" if cat in social_media else \
+            "sports" if cat in sports else \
+            "multimedia" if cat in multimedia else \
+            "health" if cat in health else \
+            "office" if cat in office else \
+            "customization" if cat in customization else \
+            "shopping" if cat in shopping else \
+            cat
 
 def create_csv_with_one_hot_encoding(data_dict, output_csv):
     # Get unique values from the dictionary values
@@ -428,6 +554,7 @@ def create_csv_with_one_hot_encoding(data_dict, output_csv):
         for v in unique_values
     }
     unique_values = list(unique_values)
+    print(f"# Categories: {len(unique_values)}")
 
     # Write CSV header
     header = ["Key"] + unique_values
@@ -441,7 +568,8 @@ def create_csv_with_one_hot_encoding(data_dict, output_csv):
         # Write rows with one-hot encoding
         lns = 0
         for key in data_dict:
-            row = [key] + [1 if data_dict[key] == val else 0 for val in unique_values]
+            processed_cats = {simplify_category(c) for c in data_dict[key]}
+            row = [key] + [1 if val in processed_cats else 0 for val in unique_values]
             csv_writer.writerow(row)
             lns += 1
         print(f"Written {lns} lines")
@@ -454,11 +582,7 @@ def main():
         with open(f"{BASE}/{f_name}") as f:
             data = json.loads(f.read())
             for k in data:
-                # print(k, data[k])
                 cats = [v.lower() for v in data[k]]
-#                if any(c in games for c in cats):
-#                    cats.append('game')
-#                    cats = [v for v in data[k] if v not in games]
 
                 app_cats[k] = cats 
 

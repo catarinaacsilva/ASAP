@@ -1,3 +1,4 @@
+import sys
 import csv
 import json
 
@@ -15,11 +16,11 @@ with open('data/selected_data.csv') as csvfile:
         # if row[1].lower() in all_apps:
             # already_seen += 1
             # print(row[1])
-        all_apps.append(row[1].lower())
+        all_apps.append(row[0].lower())
 
-print(len(all_apps))
+print("All apps", len(all_apps))
 all_apps = set(all_apps[1:])
-print(len(all_apps))
+print("All unique apps", len(all_apps))
 # print(len(all_apps), already_seen, len(all_apps) + already_seen)
 
 done_apps = set()
@@ -44,7 +45,7 @@ headers = {
 }
 
 # print(f"{count=} {len(all_apps)=} {len(unfinished)=}")
-print(f"{len(all_apps)=} {len(unfinished)=}")
+print(f"From {len(all_apps)=} apps, still missing {len(unfinished)=}")
 
 iter_i = 0
 for app in unfinished:
@@ -57,8 +58,8 @@ for app in unfinished:
 
         # Check if the response was successful (status code < 400)
         if response.status_code >= 400:
-            print("Request failed with status code:", response.status_code)
-            sys.exit(1)
+            # print("Request failed with status code:", response.status_code)
+            raise Exception("Request failed with status code:", response.status_code)
 
         with open("tmp.html", 'w') as f:
             f.write(response.text) 
@@ -85,15 +86,13 @@ for app in unfinished:
     except KeyboardInterrupt:
         break
     except AttributeError as e:
-        print(e)
-        print(f"Failed to load {app}")
+        print(f"Failed to load {app}: {e}")
         print('----')
-        app_categories[app] = []
+        app_categories[app] = ['__ERROR__']
     except Exception as e:
-        print(e)
-        print(f"[CRITICAL] Failed to load {app}")
+        print(f"[CRITICAL] Failed to load {app}: {e}")
         print('----')
-        app_categories[app] = []
+        app_categories[app] = ['__ERROR__']
 
 with open(f"data/app_cats_{len(done_apps)}_{iter_i}.json", 'w') as f:
     f.write(json.dumps(app_categories))
