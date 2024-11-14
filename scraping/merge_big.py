@@ -24,16 +24,16 @@ merged_file_path = 'merged_temp.csv'
 merged_df.to_csv(merged_file_path, index=False)
 print(f"Merged DataFrame saved to {merged_file_path}")
 
-# Re-read the merged file
-merged_df = pd.read_csv(merged_file_path)
-
-# Add the "class" column by applying the heuristic function
-merged_df['class'] = merged_df.apply(heuristics.heuristic, axis=1)
-print(f"Final: {merged_df.shape}")
-
-# Save the final DataFrame with the class column
-final_output_path = 'merged_output_with_class.csv'
-merged_df.to_csv(final_output_path, index=False)
-
-print(f'Final DataFrame saved to {final_output_path}')
+## Re-read the merged file
+#merged_df = pd.read_csv(merged_file_path)
+#
+## Add the "class" column by applying the heuristic function
+#merged_df['class'] = merged_df.apply(heuristics.heuristic, axis=1)
+#print(f"Final: {merged_df.shape}")
+#
+## Save the final DataFrame with the class column
+#final_output_path = 'merged_output_with_class.csv'
+#merged_df.to_csv(final_output_path, index=False)
+#
+#print(f'Final DataFrame saved to {final_output_path}')
 
