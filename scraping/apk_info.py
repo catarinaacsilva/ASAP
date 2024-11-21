@@ -53,17 +53,61 @@ def fetch_app_categories(play_store_url):
     
     return categories
 
+def fetch_apkpure_cats(app: str) -> [str]:
+    url = f"https://apkpure.com/search?q={app}"
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Connection': 'keep-alive',
+    }
+
+    try:
+        response = requests.get(url, headers=headers)
+
+        # Check if the response was successful
+        if response.status_code >= 400:
+            raise Exception("Request failed with status code:", response.status_code)
+
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        # Extract categories
+        try:
+            cats = soup \
+                    .find("div", {"class": "first-tags"}) \
+                    .find_all("a", {"class": "tag"})
+            cats = [c.text.strip() for c in cats]
+            if len(cats) == 0:
+                cats = soup \
+                    .find("div", {"class": "first-tags"}) \
+                    .find_all("div", {"class": "tag"})
+                cats = [c.text.strip() for c in cats]
+            if not cats:
+                print(f"ERROR FOR APP https://apkpure.com/search?q={app}")
+                return []
+            else:
+                return cats
+        except AttributeError as e:
+            print(f"Failed to load {app}: {e}")
+            return [] # ['__ERROR__']
+        print(f"Scraped {app}")
+
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR] Request failed for {app}: {e}")
+        return []
+
 def extract_apk_info(apk_file):
     """Extract app info from an APK and return as JSON."""
     app_id = extract_app_id(apk_file)
     permissions = extract_permissions(apk_file)
-    play_store_url = generate_play_store_url(app_id)
+    # play_store_url = generate_play_store_url(app_id)
 
-    categories = fetch_app_categories(play_store_url) if play_store_url else []
+    # categories = fetch_app_categories(play_store_url) if play_store_url else []
+    categories = fetch_apkpure_cats(app_id) # if play_store_url else []
 
     result = {
         "app_id": app_id,
-        "play_store_url": play_store_url,
+        # "play_store_url": play_store_url,
         "permissions": permissions,
         "categories": categories
     }

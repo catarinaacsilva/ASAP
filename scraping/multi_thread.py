@@ -26,7 +26,7 @@ def fetch_proxies(proxy_url):
         return []
 
 # Scraping function
-def scrape(app, proxy, thread_id):
+def scrape(app, proxy=None, thread_id=0):
     global app_categories
     url = f"https://apkpure.com/search?q={app}"
     headers = {

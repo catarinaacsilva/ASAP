@@ -1,3 +1,4 @@
+import sys
 import gzip
 import tensorflow as tf
 import numpy as np
@@ -6,6 +7,8 @@ import tensorflow.keras.backend as K
 from tqdm.keras import TqdmCallback
 
 from scraping.apk_info import extract_apk_info
+
+from apk.model import ABigModel
 
 APD_PERMISSIONS = [
     "OTHER_PERMISSIONS",
@@ -126,6 +129,12 @@ def main(model: str, path: str, to_drop: [str]):
 def convert_to_apd():
     pass
 
+## TODO
+# Map X apkpure cats -> exodus cats
+#       apk perms -> exodus perms
+#     X apkpure cats -> apd cats
+#       apk perms -> abig perms
+#     X apk perms -> apd perms (native) 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -135,10 +144,19 @@ if __name__ == "__main__":
     apk_path = sys.argv[1]
 
     info = extract_apk_info(apk_path)
-    app = info['permissions']
+#    app = info['permissions']
+#
+#    print(len(APD_PERMISSIONS), len(app), len(list(e for e in app if e in APD_PERMISSIONS)))
+#    print(info['categories'])
 
-    print(len(APD_PERMISSIONS), len(app), len(list(e for e in app if e in APD_PERMISSIONS)))
-    print(info['categories'])
+    perms = info['permissions']
+    cats = info['categories']
+
+    print(perms, cats)
+
+    model = ABigModel("out/abig_ae.keras")
+    res = model.analyse_apk(perms, cats)
+    print(res)
 
 #    for model, path, to_drop in (
 #        ("apd", "dataset/android_permission_dataset.csv.gz", ("name")), 
