@@ -8,7 +8,7 @@ from tqdm.keras import TqdmCallback
 
 from scraping.apk_info import extract_apk_info
 
-from apk.model import ABigModel
+from apk.model import ABigModel, APDModel, ExodusModel
 
 APD_PERMISSIONS = [
     "OTHER_PERMISSIONS",
@@ -93,49 +93,6 @@ def mad_score(points):
     return 0.6745 * ad / mad
 
 
-def main(model: str, path: str, to_drop: [str]):
-    with gzip.open(path,'rb') as f:
-        file_content=f.read()
-    df = pl.read_csv(file_content)
-
-    df = df.rename({col: col.lower() for col in df.columns})
-    df = df.rename({'class': 'label'})
-    if 'package' in df.columns: # deal with null values
-        df = df.filter(pl.col('package').is_not_null())
-
-    df_clean = df.drop(to_drop)
-    
-    autoencoder = tf.keras.models.load_model(f"out/ae_{model}.keras")
-
-    print(df_clean.shape)
-    X_test = np.zeros(shape=(1, df_clean.shape[1]-1), dtype=np.float32)
-    y_test = np.zeros(shape=(1), dtype=np.float32)
-    reconstructions = autoencoder.predict(X_test)
-
-    mse = np.mean(np.power(X_test - reconstructions, 2), axis=1)
-    mae = np.mean(np.abs(X_test - reconstructions), axis=1)
-
-    malicious = mae[y_test==1]
-    benign    = mae[y_test==0]
-
-    print(f"{len(malicious)/(len(benign)+len(malicious)):.2}% anomaly")
-
-    thr = 0.5 # 0.0597514188458294 # isodata(mae)
-    print(f'ISO-Data Thr: {thr}')
-    y_pred = mse > thr
-    print(y_pred)
-
-
-def convert_to_apd():
-    pass
-
-## TODO
-# Map X apkpure cats -> exodus cats
-#       apk perms -> exodus perms
-#     X apkpure cats -> apd cats
-#       apk perms -> abig perms
-#     X apk perms -> apd perms (native) 
-
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(f"usage: python {sys.argv[0]} <path to apk>")
@@ -144,22 +101,14 @@ if __name__ == "__main__":
     apk_path = sys.argv[1]
 
     info = extract_apk_info(apk_path)
-#    app = info['permissions']
-#
-#    print(len(APD_PERMISSIONS), len(app), len(list(e for e in app if e in APD_PERMISSIONS)))
-#    print(info['categories'])
 
     perms = info['permissions']
     cats = info['categories']
 
     print(perms, cats)
 
-    model = ABigModel("out/abig_ae.keras")
+    # model = ABigModel("out/abig_ae.keras")
+    model = APDModel("out/apd_vae.keras")
+    # model = ExodusModel("out/exodus_vae.keras")
     res = model.analyse_apk(perms, cats)
     print(res)
-
-#    for model, path, to_drop in (
-#        ("apd", "dataset/android_permission_dataset.csv.gz", ("name")), 
-#        ("exodus", "dataset/exodus.csv.gz", ("package")),
-#        ):
-#        main(model, path, to_drop)

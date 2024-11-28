@@ -4,6 +4,8 @@ import Levenshtein
 import tensorflow as tf
 import numpy as np
 
+from .vae import VAE, Sampling
+
 dist_func = Levenshtein.distance
 
 class Model(ABC):
@@ -24,17 +26,6 @@ class Model(ABC):
         pass
 
     def analyse_apk(self, apk_permissions: [str], apk_categories: [str]) -> bool:
-#        with gzip.open(apk_path,'rb') as f:
-#            file_content=f.read()
-#        df = pl.read_csv(file_content)
-#
-#        df = df.rename({col: col.lower() for col in df.columns})
-#        df = df.rename({'class': 'label'})
-#        if 'package' in df.columns: # deal with null values
-#            df = df.filter(pl.col('package').is_not_null())
-#
-#        df_clean = df.drop(to_drop)
-        
         permissions = [p_mapped for p in apk_permissions if (p_mapped := self.map_permission(p)) is not None]
         categories = [c_mapped for c in apk_categories if (c_mapped := self.map_category(c)) is not None]
         perms_cats = [*permissions, *categories]
@@ -43,24 +34,17 @@ class Model(ABC):
         encoded = [pc in perms_cats for pc in self.__header]
         print(f"Encoded with {len(encoded)=}")
 
-        autoencoder = tf.keras.models.load_model(self.__model_path)
+        # from apk.model import Sampling, VAE
+        # import apk.model # import Sampling, VAE
+        autoencoder = tf.keras.models.load_model(self.__model_path, custom_objects={'VAE': VAE, 'Sampling': Sampling}, compile=False)
         autoencoder.summary()
 
-#        print(df_clean.shape)
-#        TODO: FIX
-#        X_test = np.zeros(shape=(1, df_clean.shape[1]-1), dtype=np.float32)
-#        y_test = np.zeros(shape=(1), dtype=np.float32)
-        X_test = np.array(encoded, dtype=np.float32).reshape(1, 73)
+        X_test = np.array(encoded, dtype=np.float32).reshape(1, len(encoded))
         print(X_test, X_test.shape)
         reconstructions = autoencoder.predict(X_test)
 
         mse = np.mean(np.power(X_test - reconstructions, 2), axis=1)
         mae = np.mean(np.abs(X_test - reconstructions), axis=1)
-
-#        malicious = mae[y_test==1]
-#        benign    = mae[y_test==0]
-#
-#        print(f"{len(malicious)/(len(benign)+len(malicious)):.2}% anomaly")
 
         thr = 0.5 # 0.0597514188458294 # isodata(mae)
         print(f'ISO-Data Thr: {thr}')
@@ -71,7 +55,6 @@ class Model(ABC):
 
 class ExodusModel(Model):
     def __init__(self, model_path: str):
-        super().__init__(model_path)
         self.category_map = {
             "games": "x0_Arcade & Action",
             # "learning": "x0_Books & Reference",
@@ -279,6 +262,39 @@ class ExodusModel(Model):
             "write contact data",
             "write to user defined dictionary", 
         ]
+        self.categories = [
+            "x0_Arcade & Action",
+            "x0_Books & Reference",
+            "x0_Brain & Puzzle",
+            "x0_Business",
+            "x0_Cards & Casino",
+            "x0_Casual",
+            "x0_Comics",
+            "x0_Communication",
+            "x0_Education",
+            "x0_Entertainment",
+            "x0_Finance",
+            "x0_Health & Fitness",
+            "x0_Libraries & Demo",
+            "x0_Lifestyle",
+            "x0_Media & Video",
+            "x0_Medical",
+            "x0_Music & Audio",
+            "x0_News & Magazines",
+            "x0_Personalization",
+            "x0_Photography",
+            "x0_Productivity",
+            "x0_Racing",
+            "x0_Shopping",
+            "x0_Social",
+            "x0_Sports",
+            "x0_Sports Games",
+            "x0_Tools",
+            "x0_Transportation",
+            "x0_Travel & Local",
+            "x0_Weather",
+        ]
+        super().__init__(model_path, self.permissions, self.categories)
 
     def map_category(self, category: str) -> str:
         return self.category_map.get(category, None)
@@ -289,11 +305,11 @@ class ExodusModel(Model):
         best_match = None
         best_distance = float('inf')
         
-        for description in descriptions:
-            distance = dist_func(permission_key, description.lower())
+        for perm in self.permissions:
+            distance = dist_func(permission_key, perm.lower())
             
             if distance < best_distance:
-                best_match = description
+                best_match = perm
                 best_distance = distance
                 
         # return best_match if best_distance < 5 else None
@@ -303,8 +319,7 @@ class ExodusModel(Model):
 
 class APDModel(Model):
     def __init__(self, model_path: str):
-        super().__init__(model_path)
-        self.permissions = {
+        self.permissions = [
             "OTHER_PERMISSIONS",
             "INTERNET",
             "ACCESS_NETWORK_STATE",
@@ -348,18 +363,99 @@ class APDModel(Model):
             "READ_APP_BADGE",
             "INSTALL_SHORTCUT",
             "MANAGE_ACCOUNTS",
-        }
+        ]
+        self.categories = [
+            "design",
+            "multi player",
+            "video downloader",
+            "clicker/idle",
+            "keyboards",
+            "tennis",
+            "weather",
+            "renovate & decorat",
+            "piano",
+            "e commerce",
+            "visual assistance",
+            "sniper",
+            "health & fitness",
+            "physics",
+            "adv",
+            "shopping",
+            "mathematics",
+            "social media",
+            "wallpaper",
+            "personalisation",
+            "learning",
+            "bang dream",
+            "heroes",
+            "language",
+            "pixel art",
+            "performance",
+            "artillery shooter",
+            "customization",
+            "beauty",
+            "libraries & demo",
+            "virtual pet",
+            "happy diwali",
+            "acg",
+            "real time",
+            "kids",
+            "drifting",
+            "mini-games",
+            "ai",
+            "shooting rpg",
+            "multimedia",
+            "super hero",
+            "train",
+            "fight",
+            "strategy rpg",
+            "kwaii",
+            "football",
+            "file managers",
+            "coaching",
+            "download tool",
+            "ball",
+            "kart",
+            "privacy",
+            "galgame",
+            "player",
+            "baby",
+            "lifestyle",
+            "office",
+            "hearing assistance",
+            "maplestory",
+            "games",
+            "learning disability",
+            "idol",
+            "play to earn",
+            "third person",
+            "parenting",
+            "cross-platform",
+            "personalization",
+            "speed test",
+            "dinosaurs",
+            "life",
+            "translation",
+            "exploration",
+            "screen casting",
+            "sports",
+            "pool",
+            "cv",
+            "doctor",
+            "rummy",
+        ]
+        super().__init__(model_path, self.permissions, self.categories, swap_order=True)
 
     def map_category(self, category: str) -> str:
-        return "games" if v in category_to_csv.games else \
-            "learning" if v in category_to_csv.learning else \
-            "social media" if v in category_to_csv.social_media else \
-            "sports" if v in category_to_csv.sports else \
-            "multimedia" if v in category_to_csv.multimedia else \
-            "health" if v in category_to_csv.health else \
-            "office" if v in category_to_csv.office else \
-            "customization" if v in category_to_csv.customization else \
-            "shopping" if v in category_to_csv.shopping else \
+        return "games" if category in category_to_csv.games else \
+            "learning" if category in category_to_csv.learning else \
+            "social media" if category in category_to_csv.social_media else \
+            "sports" if category in category_to_csv.sports else \
+            "multimedia" if category in category_to_csv.multimedia else \
+            "health" if category in category_to_csv.health else \
+            "office" if category in category_to_csv.office else \
+            "customization" if category in category_to_csv.customization else \
+            "shopping" if category in category_to_csv.shopping else \
             None
 
     def map_permission(self, permission: str) -> str:
