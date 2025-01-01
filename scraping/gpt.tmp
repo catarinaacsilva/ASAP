@@ -1,0 +1,181 @@
+You're right that Levenshtein, cosine similarity, and simple token inclusion are basic distance measures that might not perform well in more complex cases like permission matching, especially when there are subtle variations in phrasing or abbreviations. Since we're dealing with permission keys and natural language descriptions, we should consider distance measures that capture semantic similarity better.
+
+Here are some alternative distance measures you can try that might improve the performance:
+
+### 1. **Jaccard Similarity (Set-based)**
+
+The Jaccard index measures the similarity between two sets by dividing the size of the intersection of the sets by the size of their union. In this case, we can treat the permission key and description as sets of tokens (words) and compute the similarity between them based on their token overlap.
+
+```python
+def jaccard_similarity(permission, description):
+    permission_set = set(permission.split())
+    description_set = set(description.split())
+    intersection = len(permission_set.intersection(description_set))
+    union = len(permission_set.union(description_set))
+    return 1 - intersection / union
+```
+
+This measure works well for simple overlaps in the presence of keywords (tokens) but doesn't handle more complex relationships (e.g., synonyms, word order).
+
+### 2. **Word Mover's Distance (WMD)**
+
+Word Mover’s Distance (WMD) is a more advanced similarity measure that computes the distance between two documents by measuring the minimum amount of distance required to move words from one document to another. It takes word embeddings (like **GloVe** or **Word2Vec**) into account, which makes it more semantic-aware.
+
+This method can be much more powerful, but it’s computationally expensive. To use WMD, you'll need to install a library like **`pyemd`** and **`gensim`** for word embeddings.
+
+First, install the necessary libraries:
+
+```bash
+pip install pyemd gensim
+```
+
+Then, use it as follows:
+
+```python
+import gensim.downloader as api
+from pyemd import emd
+
+# Load pre-trained word embeddings
+word2vec = api.load("glove-wiki-gigaword-100")  # You can also use Word2Vec
+
+def word_movers_distance(permission, description):
+    # Tokenize the permission and description
+    permission_tokens = permission.split()
+    description_tokens = description.split()
+
+    # Create word embeddings for the tokens
+    permission_vec = [word2vec[word] for word in permission_tokens if word in word2vec]
+    description_vec = [word2vec[word] for word in description_tokens if word in word2vec]
+
+    # Compute Word Mover's Distance using GloVe embeddings
+    return emd(permission_vec, description_vec, word2vec)
+```
+
+**Note**: Word Mover’s Distance requires that the words are present in the pre-trained embedding model (e.g., GloVe or Word2Vec). If some words aren’t in the model, you might need to handle those cases appropriately (e.g., skip them or use random vectors).
+
+### 3. **Embeddings + Cosine Similarity**
+
+If you don't want to go with Word Mover's Distance, another option is to simply convert both the permission key and description into word embeddings (e.g., **GloVe**, **Word2Vec**, or **BERT** embeddings) and then measure the similarity between their embeddings using cosine similarity. This approach provides a more semantic understanding of the phrases than just bag-of-words or character-based measures like Levenshtein.
+
+To use this, you can create vectors for both the permission key and the description using a pre-trained embedding model and calculate cosine similarity between the resulting vectors.
+
+Here’s an example using GloVe embeddings:
+
+```python
+import numpy as np
+import gensim.downloader as api
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Load pre-trained GloVe embeddings
+word2vec = api.load("glove-wiki-gigaword-100")
+
+def get_average_embedding(sentence):
+    tokens = sentence.split()
+    embeddings = [word2vec[token] for token in tokens if token in word2vec]
+    if not embeddings:
+        return np.zeros(100)  # If no valid embeddings are found, return a zero vector
+    return np.mean(embeddings, axis=0)
+
+def cosine_similarity_embeddings(permission, description):
+    permission_vec = get_average_embedding(permission)
+    description_vec = get_average_embedding(description)
+    return cosine_similarity([permission_vec], [description_vec])[0][0]
+```
+
+This method uses the average vector representation of each word in the sentence and computes the cosine similarity between the two resulting vectors. It’s more powerful than simple token matching because it captures semantic similarity between words, even if they’re not exactly the same.
+
+### 4. **Soft Cosine Measure (Text Similarity)**
+
+A more sophisticated extension of cosine similarity is the **Soft Cosine Measure** (SCM). SCM adjusts the cosine similarity to account for word similarity even when words aren’t exactly the same (e.g., "message" and "text" are related). This is especially useful for synonyms.
+
+To use SCM, you can use the `gensim` library, which supports computing soft cosine similarity. You’ll need to have word embeddings (such as GloVe or Word2Vec) and a similarity matrix for them.
+
+Here's a basic example using `gensim`:
+
+```python
+from gensim import corpora
+from gensim.similarities import SoftCosineSimilarity
+from gensim.models import Word2Vec
+
+# Assuming you've already loaded the embeddings (e.g., Word2Vec or GloVe)
+# Convert the descriptions into a bag-of-words format
+texts = [desc.split() for desc in descriptions]
+
+# Build a dictionary and a corpus from the descriptions
+dictionary = corpora.Dictionary(texts)
+corpus = [dictionary.doc2bow(text) for text in texts]
+
+# Create a similarity matrix using GloVe or Word2Vec embeddings
+similarity_matrix = gensim.matutils.corpus2dense(corpus, num_terms=len(dictionary)).T
+
+# Soft Cosine Similarity
+soft_cosine = SoftCosineSimilarity(corpus, similarity_matrix)
+
+def soft_cosine_distance(permission, description):
+    permission_bow = dictionary.doc2bow(permission.split())
+    description_bow = dictionary.doc2bow(description.split())
+    return 1 - soft_cosine[permission_bow][description_bow]  # Inverse to make it a distance
+```
+
+This approach will provide a semantic-based distance that accounts for word relationships, which is useful when comparing words or phrases that are not identical but are related (e.g., "read messages" vs "access messages").
+
+### 5. **BERT-based Embedding + Cosine Similarity**
+
+For a truly state-of-the-art solution, you can use **BERT embeddings**. BERT (Bidirectional Encoder Representations from Transformers) produces context-aware embeddings that are highly effective at capturing the meaning of words and sentences, even in complex contexts.
+
+You can use the `transformers` library to obtain sentence embeddings and measure cosine similarity:
+
+```bash
+pip install transformers
+```
+
+```python
+from transformers import BertModel, BertTokenizer
+import torch
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Load BERT model and tokenizer
+tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+model = BertModel.from_pretrained('bert-base-uncased')
+
+def get_bert_embedding(sentence):
+    inputs = tokenizer(sentence, return_tensors="pt", truncation=True, padding=True, max_length=512)
+    with torch.no_grad():
+        outputs = model(**inputs)
+    # Use the [CLS] token's embedding as the sentence representation
+    return outputs.last_hidden_state[:, 0, :].numpy()
+
+def bert_cosine_similarity(permission, description):
+    permission_vec = get_bert_embedding(permission)
+    description_vec = get_bert_embedding(description)
+    return cosine_similarity(permission_vec, description_vec)[0][0]
+```
+
+**Note**: BERT-based methods require more computational resources and may be overkill for smaller datasets, but they produce excellent results when semantic understanding is crucial.
+
+### Summary of Distance Measures:
+
+- **Jaccard Similarity**: Good for simple token overlaps, very fast and interpretable.
+- **Word Mover’s Distance (WMD)**: Best for deep semantic understanding, but computationally expensive.
+- **Embeddings + Cosine Similarity**: Good for capturing semantic meaning, works with GloVe or Word2Vec embeddings.
+- **Soft Cosine Similarity**: An extension of cosine similarity that works well with embeddings and accounts for word similarity.
+- **BERT-based Cosine Similarity**: Best for context-aware, fine-grained semantic matching, but resource-intensive.
+
+### Recommended Approach:
+
+- **First Try**: If you're looking for something faster than Word Mover's Distance but still semantically powerful, try **Embeddings + Cosine Similarity** using **GloVe** or **Word2Vec**. It's a balanced approach that gives good performance without being too computationally expensive.
+- **For High-Performance Tasks**: If you're willing to invest in resources, **BERT embeddings** are the most powerful and will likely give you the best performance in terms of semantic similarity.
+
+If you need more help implementing any of these solutions, feel free to ask!
+
+------------------------------------------------------------------------------
+
+                    |Exodus   |APD      |ABig     |
+                    |A        |B        |C        |
+Model               |MCC |F1  |MCC |F1  |MCC |F1  |
+--------------------|----|----|----|----|----|----|
+Logistic Regression |0.43|0.48|0.62|0.72|0.0 |0.0 |
+Decision Tree       |0.80|0.88|0.75|0.84|0.72|0.81|
+AE                  |0.97|0.99|0.86|0.93|0.91|0.95|
+VAE                 |0.98|0.99|0.77|0.90|0.91|0.95|
+SAE                 |0.97|0.98|0.95|0.98|1.00|1.00|

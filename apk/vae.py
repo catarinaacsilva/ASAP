@@ -96,14 +96,11 @@ class VAE(keras.Model):
         return reconstruction
 
     def get_config(self):
-        # Get the base model configuration
         config = super().get_config()
 
-        # Manually serialize the encoder and decoder models
         encoder_config = self.encoder.get_config()
         decoder_config = self.decoder.get_config()
 
-        # Add the encoder and decoder configurations to the model config
         config.update({
             'encoder': encoder_config,
             'decoder': decoder_config,
@@ -112,38 +109,12 @@ class VAE(keras.Model):
 
     @classmethod
     def from_config(cls, config):
-        # Rebuild the encoder and decoder from their config
-        print("Config: ", config)
+        # print("Config: ", config)
         encoder_config = config.pop('encoder')
         decoder_config = config.pop('decoder')
 
-        # Recreate the encoder and decoder models using their configurations
         encoder = keras.Model.from_config(encoder_config)
         decoder = keras.Model.from_config(decoder_config)
 
-        # Now return an instance of VAE using the restored encoder and decoder
         return cls(encoder=encoder, decoder=decoder, **config)
 
-# def variational_autoencoder_model(input_dim, latent_dim, seed=42):
-#     keras.utils.set_random_seed(seed)
-# 
-#     input_layer = keras.layers.Input(shape = (input_dim, ))
-#     encoder_00 = keras.layers.Dense(64, kernel_initializer='glorot_uniform', activation='silu')(input_layer)
-#     encoder_01 = keras.layers.Dense(16, kernel_initializer='glorot_uniform', activation='silu')(encoder_00)
-#     z_mean = keras.layers.Dense(latent_dim, name="z_mean")(encoder_01)
-#     z_log_var = keras.layers.Dense(latent_dim, name="z_log_var")(encoder_01)
-#     z = Sampling()([z_mean, z_log_var])
-#     encoder = keras.Model(input_layer, [z_mean, z_log_var, z], name="encoder")
-#     #encoder.summary()
-# 
-#     latent_inputs = keras.Input(shape=(latent_dim,))
-#     decoder_00 = keras.layers.Dense(32, kernel_initializer='glorot_uniform', activation='silu')(latent_inputs)
-#     decoder_01 = keras.layers.Dense(16, kernel_initializer='glorot_uniform', activation='silu')(decoder_00)
-#     output_layer = keras.layers.Dense(input_dim, kernel_initializer='glorot_uniform', activation='linear')(decoder_01)
-#     decoder = keras.Model(latent_inputs, output_layer, name="decoder")
-#     #decoder.summary()
-# 
-#     vae = VAE(encoder, decoder)
-#     vae.compile(optimizer=keras.optimizers.Adam(), metrics=['r2_score'])
-#     #return vae, encoder, decoder
-#     return vae

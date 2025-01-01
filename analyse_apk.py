@@ -105,7 +105,7 @@ if __name__ == "__main__":
     perms = info['permissions']
     cats = info['categories']
 
-    print(perms, cats)
+    # print(perms, cats)
 
     # model = ABigModel("out/abig_ae.keras")
     model = APDModel("out/apd_vae.keras")

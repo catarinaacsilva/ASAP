@@ -5,9 +5,11 @@ import requests
 import sys
 import csv
 import json
+import glob
 from queue import Queue
 from bs4 import BeautifulSoup
 import category_to_csv
+from apk_info import extract_apk_info
 
 # Global shared variables
 all_apps = set()
@@ -112,6 +114,51 @@ def worker(queue, proxy_list, thread_id):
 
         queue.task_done()
 
+def apk_worker(queue, proxy_list, thread_id):
+    global stop_scraping
+    while True:
+        with lock:
+            if queue.empty():
+                stop_scraping = True
+
+        if stop_scraping:
+            print(f"[{thread_id}] STOPPING")
+            break
+
+        try:
+            app = queue.get(timeout=1)  # Use timeout to periodically check for stop signal
+            if app is None:
+                break
+        except Exception:
+            continue  # If the queue is empty, continue checking for stop signal
+
+        # Ensure unique proxy usage
+        with lock:
+            if proxy_list:
+                proxy = proxy_list.pop(0)
+                # print(f"[{thread_id}] Using proxy '{proxy}'")
+            else:
+                print(f"No more proxies available for thread {thread_id}.")
+                break
+
+        try:
+            info = extract_apk_info(app)
+            with lock:
+                print(f"[{thread_id}] got info on '{info['app_id']} [{len(app_categories)+1}]")
+                app_categories[app] = info
+                
+        except Exception as e:
+            t = 50 + random.randint(0, 30)
+            print(f"[RECOVERING] [{thread_id}] Recovering from exception in {t}s {e}")
+            time.sleep(t)
+            continue
+
+        # Return the proxy to the list after use
+        with lock:
+            proxy_list.append(proxy)
+
+        queue.task_done()
+
 # Main function to set up threading and proxy management
 def main(urls, num_threads, proxy_url):
     global all_apps, done_apps, stop_scraping
@@ -186,6 +233,89 @@ def main(urls, num_threads, proxy_url):
     category_to_csv.main()
     print("Data written")
 
+def scrape_local_apks(num_threads, proxy_url):
+    global all_apps, done_apps, stop_scraping
+
+    # Populate all_apps
+    # all_apps.update(glob.glob("dataset/apk/*.apk"))
+    with open("dataset/apk/to_analyse.json") as f:
+        all_apps = json.loads(f.read()).values()
+        all_apps = {f"dataset/apk/{f}" for f in all_apps}
+
+    print(f"All apps: {len(all_apps)}")
+    # all_apps = set(all_apps)  # Ensure uniqueness
+
+    # Load done_apps
+    with open('dataset/apk/apk_info.csv') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            done_apps.add(row[0])
+
+    unfinished = [app for app in all_apps if app not in done_apps]
+    print(f"From {len(all_apps)} apps, still missing {len(unfinished)}, {len(done_apps)=}")
+
+    # Fetch proxies
+    proxy_list = fetch_proxies(proxy_url)
+
+    # Initialize the queue
+    queue = Queue()
+
+    # Enqueue unfinished apps
+    for app in unfinished:
+        queue.put(app)
+
+    threads = []
+    for thread_id in range(num_threads):
+        thread = threading.Thread(target=apk_worker, args=(queue, proxy_list, thread_id))
+        thread.start()
+        threads.append(thread)
+
+    try:
+        # Block until all tasks are done
+        queue.join()
+        print("ALL DONE!")
+
+    except KeyboardInterrupt:
+        print("Interrupted! Closing...")
+        stop_scraping = True  # Set the flag to stop scraping
+        for _ in range(num_threads):
+            queue.put(None)  # Signal threads to stop
+        for thread in threads:
+            thread.join()
+    finally:
+        print("saving, do not close...")
+        # Save the results
+        with open(f"dataset/apk/app_info_{len(done_apps)}.json", 'w') as f:
+            json.dump(app_categories, f)
+
+        # category_to_csv.main()
+        apps = list(app_categories.keys())
+        with open('dataset/apk/apk_info.csv', newline='') as f:
+            reader = csv.reader(f)
+            processed_apks = [e[0] for e in reader]
+
+        with open('dataset/apk/apk_info.csv', 'w', newline='') as csv_file:
+            csv_writer = csv.writer(csv_file)
+            for app in apps + processed_apks:
+                csv_writer.writerow([app])
+
+        print("Data written")
+        
+        # print("Closed")
+        return
+
+    # Stop workers
+    for _ in range(num_threads):
+        queue.put(None)
+    for thread in threads:
+        thread.join()
+
+    # Save the results
+    with open(f"dataset/apk/app_info_{len(done_apps)}.json", 'w') as f:
+        json.dump(app_categories, f)
+
+
+# https://raw.githubusercontent.com/TheSpeedX/PROXY-List/refs/heads/master/http.txt
 if __name__ == "__main__":
     if len(sys.argv) < 4:
         print("Usage: python scraper.py <proxy_url> --threads <num_threads>")
@@ -194,4 +324,5 @@ if __name__ == "__main__":
     proxy_url = sys.argv[1]
     num_threads = int(sys.argv[sys.argv.index('--threads') + 1])
 
-    main([], num_threads, proxy_url)
+    # main([], num_threads, proxy_url)
+    scrape_local_apks(num_threads, proxy_url)

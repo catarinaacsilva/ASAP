@@ -89,6 +89,8 @@ def fetch_apkpure_cats(app: str) -> [str]:
                 return cats
         except AttributeError as e:
             print(f"Failed to load {app}: {e}")
+            # with open(f'/tmp/{app}.html', 'w') as site:
+            #     site.write(soup.text)
             return [] # ['__ERROR__']
         print(f"Scraped {app}")
 
@@ -96,14 +98,18 @@ def fetch_apkpure_cats(app: str) -> [str]:
         print(f"[ERROR] Request failed for {app}: {e}")
         return []
 
-def extract_apk_info(apk_file):
+def extract_apk_info(apk_file, scrape_categories=True):
     """Extract app info from an APK and return as JSON."""
+    # print(f"Getting info on '{apk_file}'")
     app_id = extract_app_id(apk_file)
     permissions = extract_permissions(apk_file)
     # play_store_url = generate_play_store_url(app_id)
 
     # categories = fetch_app_categories(play_store_url) if play_store_url else []
-    categories = fetch_apkpure_cats(app_id) # if play_store_url else []
+    if scrape_categories:
+        categories = fetch_apkpure_cats(app_id) # if play_store_url else []
+    else:
+        categories = []
 
     result = {
         "app_id": app_id,

@@ -11,11 +11,13 @@ dist_func = Levenshtein.distance
 class Model(ABC):
     def __init__(self, model_path: str, permissions: [str], categories: [str], swap_order: bool=False):
         self.__model_path = model_path
+        self.name = model_path.split('/')[1].split('.')[0]
 #        self._permissions = permissions
 #        self._categories = categories
 #        self.__swap_order = swap_order
         self.__header = [*permissions, *categories] if not swap_order else [*categories, *permissions]
-        print(f"Created with {len(self.__header)=}")
+        # print(f"Created with {len(self.__header)=}")
+        self.__autoencoder = tf.keras.models.load_model(self.__model_path, custom_objects={'VAE': VAE, 'Sampling': Sampling}, compile=False)
 
     @abstractmethod
     def map_permission(self, permission: str) -> str:
@@ -32,25 +34,25 @@ class Model(ABC):
 
         # header = [*permissions, *categories] if not sef.__swap_order else [*categories, *permissions]
         encoded = [pc in perms_cats for pc in self.__header]
-        print(f"Encoded with {len(encoded)=}")
+        # print(f"Encoded with {len(encoded)=}")
 
         # from apk.model import Sampling, VAE
         # import apk.model # import Sampling, VAE
-        autoencoder = tf.keras.models.load_model(self.__model_path, custom_objects={'VAE': VAE, 'Sampling': Sampling}, compile=False)
-        autoencoder.summary()
+        # autoencoder = tf.keras.models.load_model(self.__model_path, custom_objects={'VAE': VAE, 'Sampling': Sampling}, compile=False)
+        # autoencoder.summary()
 
         X_test = np.array(encoded, dtype=np.float32).reshape(1, len(encoded))
-        print(X_test, X_test.shape)
-        reconstructions = autoencoder.predict(X_test)
+        # print(X_test, X_test.shape)
+        reconstructions = self.__autoencoder.predict(X_test)
 
         mse = np.mean(np.power(X_test - reconstructions, 2), axis=1)
         mae = np.mean(np.abs(X_test - reconstructions), axis=1)
 
         thr = 0.5 # 0.0597514188458294 # isodata(mae)
-        print(f'ISO-Data Thr: {thr}')
+        # print(f'ISO-Data Thr: {thr}')
         y_pred = mse > thr
         # print(y_pred)
-        return y_pred
+        return y_pred[0]
     
 
 class ExodusModel(Model):
@@ -541,7 +543,7 @@ class ABigModel(Model):
            "adv",
            "games",
         ]
-        print("->", len(perms), len(cats))
+        # print("->", len(perms), len(cats))
         super().__init__(model_path, perms, cats)
         self.permissions = [ 
             "set preferred apps",

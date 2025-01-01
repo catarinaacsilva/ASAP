@@ -1,0 +1,85 @@
+import json
+# import matplotlib
+import matplotlib.pyplot as plt
+import polars as pl
+from collections import defaultdict
+
+
+EXP = "abig_sae"
+REF = "abig"
+file_path = 'out/apk_analysis.json'  # Replace with your actual file path
+
+PERMISSIONS = ["a", "b"]
+CATEGORIES = ["c", "d"]
+
+# matplotlib.use('QtCairo')  # Use the TkAgg backend for GUI support
+
+def calculate_percentages(experiment, reference):
+    # Convert lists to sets for easy comparison
+    experiment_set = set(experiment)
+    reference_set = set(reference)
+
+    # Calculate intersection and differences
+    intersection = experiment_set & reference_set
+    only_in_experiment = experiment_set - reference_set
+    only_in_reference = reference_set - experiment_set
+
+    # Calculate percentages
+    total_experiment = len(experiment_set)
+    total_reference = len(reference_set)
+    
+    percent_in_both = (len(intersection) / min(total_experiment, total_reference)) * 100 if total_experiment and total_reference else 0
+    percent_in_experiment_only = (len(only_in_experiment) / total_experiment) * 100 if total_experiment else 0
+    percent_in_reference_only = (len(only_in_reference) / total_reference) * 100 if total_reference else 0
+    
+    return percent_in_both, percent_in_experiment_only, percent_in_reference_only
+
+def analyze_json(file_path):
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+    
+    # Prepare data for analysis
+    results = defaultdict(list)
+    
+    for data_point, experiments in data.items():
+        experiment = experiments.get(EXP, [])
+        reference = experiments.get(REF, [])
+        
+        percent_in_both, percent_in_experiment_only, percent_in_reference_only = calculate_percentages(experiment, reference)
+        
+        # Store results for each data point
+        results["Data Point"].append(data_point)
+        results["Percent in Both"].append(percent_in_both)
+        results["Percent in Mapping Only"].append(percent_in_experiment_only)
+        results["Percent in Dataset Only"].append(percent_in_reference_only)
+
+    # Convert results to a Polars DataFrame
+    df = pl.DataFrame(results)
+    
+    # Extract the columns as lists to plot using Matplotlib
+    percent_in_both = df["Percent in Both"].to_list()
+    percent_in_experiment_only = df["Percent in Mapping Only"].to_list()
+    percent_in_reference_only = df["Percent in Dataset Only"].to_list()
+    
+    # Create box plots for each percentage category
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+    
+    # Boxplot for Percent in Both
+    axes[0].boxplot(percent_in_both)
+    axes[0].set_title("Percentage in Both")
+    
+    # Boxplot for Percent in Experiment Only
+    axes[1].boxplot(percent_in_experiment_only)
+    axes[1].set_title("Percentage in Mapping Only")
+    
+    # Boxplot for Percent in Reference Only
+    axes[2].boxplot(percent_in_reference_only)
+    axes[2].set_title("Percentage in Dataset Only")
+    
+    plt.tight_layout()
+    # plt.show()
+    plt.savefig('/tmp/box_plots.png', bbox_inches='tight')  # Save as PNG
+    plt.close()  # Close the plot to free memory
+
+# Example usage
+analyze_json(file_path)
