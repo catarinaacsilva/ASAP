@@ -1,3 +1,7 @@
+"""
+Script to evaluate the quality of the mapping functions, assuming the heuristics in the dataset to be correct.
+"""
+
 PERMISSIONS = [s.lower() for s in [
             "set preferred apps",
             "read terms you added to the dictionary",
@@ -87,6 +91,18 @@ EXP = "abig_sae"
 REF = "abig"
 
 def calculate_percentages(experiment, reference):
+    """
+    Calculate the percentage of elements from the experiment set in the reference set, from the reference set in the experiment set and in both at the same time.
+
+    Parameters
+    ----------
+    experiment: list of elements to test
+    reference: list of elements the experiment should yield
+
+    Returns
+    -------
+    percentage in both datasets, experiment only and reference only
+    """
     # Convert lists to sets for easy comparison
     experiment_set = set(experiment)
     reference_set = set(reference)
@@ -107,12 +123,20 @@ def calculate_percentages(experiment, reference):
     return percent_in_both, percent_in_experiment_only, percent_in_reference_only
 
 def calculate_difference(experiment, reference):
-    # Calculate the absolute difference between the percentages of the two lists
+    """ 
+    Calculate the absolute difference between the percentages of the two lists
+    """
     percent_in_both, percent_in_experiment_only, percent_in_reference_only = calculate_percentages(experiment, reference)
     total_percent_diff = abs(percent_in_both - percent_in_experiment_only - percent_in_reference_only)
     return total_percent_diff, percent_in_both, percent_in_experiment_only, percent_in_reference_only
 
 def analyze_json(file_path, fn):
+    """
+    Create box plots of the classes given to each APK.
+    A class can be a permission or a category.
+    The function generates 3 images, one for categories alone, other for permissions and another with both.
+    Each image will have 3 figures, one that shows how many guesses were in the original dataset, another showing how many elements from the dataset were in the guesses and another showing how many were in both
+    """
     with open(file_path, 'r') as file:
         data = json.load(file)
         data.pop("__NONE__", None)
@@ -170,15 +194,15 @@ def analyze_json(file_path, fn):
     categories_discrepancies.sort(key=lambda x: x[1], reverse=True)
 
     # Print out the data points with the biggest discrepancies
-    print("Top 5 data points with the largest total discrepancies (combined):")
+    print("Top 5 apks with the largest total discrepancies (combined):")
     for data_point, diff in discrepancies[:5]:
         print(f"{data_point}: {diff:.2f}% difference")
 
-    print("\nTop 5 data points with the largest discrepancies in PERMISSIONS:")
+    print("\nTop 5 apks with the largest discrepancies in PERMISSIONS:")
     for data_point, diff in permissions_discrepancies[:5]:
         print(f"{data_point}: {diff:.2f}% difference")
 
-    print("\nTop 5 data points with the largest discrepancies in CATEGORIES:")
+    print("\nTop 5 apks with the largest discrepancies in CATEGORIES:")
     for data_point, diff in categories_discrepancies[:5]:
         print(f"{data_point}: {diff:.2f}% difference")
 
@@ -258,7 +282,10 @@ def analyze_json(file_path, fn):
     plt.close()
 
 # Example usage
-if __name__ == "__main__":
+def main():
+    """
+    Evaluate the mapping of permissions by producing graphs showing how close to the dataset classes the mapping gets the apk.
+    """
     functions = (
         # apk.model.simple_token_inclusion_distance,
         # apk.model.jaccard_similarity,
@@ -292,3 +319,6 @@ if __name__ == "__main__":
 
         with open(f"dataset/perm_map_{fn_name}.json", 'w') as f:
             f.write(json.dumps(perm_map))
+
+if __name__ == "__main__":
+    main()

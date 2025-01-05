@@ -1,3 +1,4 @@
+import os
 import threading
 import time
 import random
@@ -8,8 +9,8 @@ import json
 import glob
 from queue import Queue
 from bs4 import BeautifulSoup
-import category_to_csv
-from apk_info import extract_apk_info
+import scraping.category_to_csv
+from scraping.apk_info import extract_apk_info
 
 # Global shared variables
 all_apps = set()
@@ -214,7 +215,7 @@ def main(urls, num_threads, proxy_url):
         with open(f"data/app_cats_{len(done_apps)}.json", 'w') as f:
             json.dump(app_categories, f)
 
-        category_to_csv.main()
+        scraping.category_to_csv.main()
         print("Data written")
         
         # print("Closed")
@@ -230,14 +231,15 @@ def main(urls, num_threads, proxy_url):
     with open(f"data/app_cats_{len(done_apps)}.json", 'w') as f:
         json.dump(app_categories, f)
 
-    category_to_csv.main()
+    scraping.category_to_csv.main()
     print("Data written")
 
 def scrape_local_apks(num_threads, proxy_url):
     global all_apps, done_apps, stop_scraping
 
     # Populate all_apps
-    # all_apps.update(glob.glob("dataset/apk/*.apk"))
+    if not os.path.exists("dataset/apk/to_analyse.json"):
+        os.mknod("dataset/apk/to_analyse.json")
     with open("dataset/apk/to_analyse.json") as f:
         all_apps = json.loads(f.read()).values()
         all_apps = {f"dataset/apk/{f}" for f in all_apps}
@@ -246,7 +248,9 @@ def scrape_local_apks(num_threads, proxy_url):
     # all_apps = set(all_apps)  # Ensure uniqueness
 
     # Load done_apps
-    with open('dataset/apk/apk_info.csv') as csvfile:
+    if not os.path.exists("dataset/apk/apk_info.csv"):
+        os.mknod("dataset/apk/apk_info.csv")
+    with open("dataset/apk/apk_info.csv") as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             done_apps.add(row[0])
@@ -317,12 +321,11 @@ def scrape_local_apks(num_threads, proxy_url):
 
 # https://raw.githubusercontent.com/TheSpeedX/PROXY-List/refs/heads/master/http.txt
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
-        print("Usage: python scraper.py <proxy_url> --threads <num_threads>")
+    if len(sys.argv) < 3:
+        print("Usage: python multi_thread.py <proxy_url> <num_threads>")
         sys.exit(1)
-
+    
     proxy_url = sys.argv[1]
-    num_threads = int(sys.argv[sys.argv.index('--threads') + 1])
-
-    # main([], num_threads, proxy_url)
+    num_threads = int(sys.argv[2])
+    
     scrape_local_apks(num_threads, proxy_url)
